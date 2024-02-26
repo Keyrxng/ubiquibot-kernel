@@ -46,6 +46,8 @@ function requestLogging(octokit: Octokit) {
   });
 }
 
-export const augmentedOctokit = Octokit.plugin(throttling, retry, paginateRest, legacyRestEndpointMethods, requestLogging).defaults((instanceOptions: object) => {
-  return Object.assign({}, defaultOptions, instanceOptions);
-});
+export const augmentedOctokit = Octokit.plugin(throttling, retry, paginateRest, legacyRestEndpointMethods, requestLogging).defaults(
+  (instanceOptions: object) => {
+    return Object.assign({}, defaultOptions, instanceOptions);
+  }
+);

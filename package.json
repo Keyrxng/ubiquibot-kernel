@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": false,
   "description": "The kernel for UbiquiBot.",
-  "main": "src/worker.ts",
+  "main": "src/index.ts",
   "author": "Ubiquity DAO",
   "license": "MIT",
   "engines": {

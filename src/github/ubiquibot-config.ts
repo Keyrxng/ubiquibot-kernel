@@ -1,5 +1,7 @@
+// @ts-expect-error no types
 import yaml from "js-yaml";
 import { GitHubContext } from "./github-context";
+import { GithubEventWebHookEvents } from "./types/webhook-events";
 
 export type UbiquiBotConfig = {
   keys: {
@@ -30,7 +32,21 @@ export type UbiquiBotConfig = {
   disabledCommands: string[];
   incentives: { comment: unknown };
   labels: { time: string[]; priority: string[] };
+  plugins: Plugins;
 };
+
+type Plugins = {
+  [key in keyof GithubEventWebHookEvents]: Plugin[];
+};
+
+export interface Plugin {
+  name: string;
+  description: string;
+  command?: string;
+  example?: string;
+  uses: string[];
+  with?: string[];
+}
 
 export async function getUbiquiBotConfig(event: GitHubContext<"issue_comment.created">): Promise<UbiquiBotConfig> {
   const responses = {
