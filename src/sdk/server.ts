@@ -2,7 +2,7 @@ import { EmitterWebhookEventName as WebhookEventName } from "@octokit/webhooks";
 import { TAnySchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { LOG_LEVEL, LogLevel, LogReturn, Logs } from "@ubiquity-os/ubiquity-os-logger";
-import { Hono } from "hono";
+import { Env, Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { Manifest } from "../types/manifest";
 import { KERNEL_PUBLIC_KEY } from "./constants";
@@ -31,6 +31,11 @@ const inputSchema = T.Object({
   signature: T.String(),
 });
 
+export type CloudflareEnvBindings = {
+  CLOUDFLARE_ACCOUNT_ID: string,
+  CLOUDFLARE_API_TOKEN: string
+}
+
 export function createPlugin<TConfig = unknown, TEnv = unknown, TSupportedEvents extends WebhookEventName = WebhookEventName>(
   handler: (context: Context<TConfig, TEnv, TSupportedEvents>) => Promise<Record<string, unknown> | undefined>,
   manifest: Manifest,
@@ -44,7 +49,8 @@ export function createPlugin<TConfig = unknown, TEnv = unknown, TSupportedEvents
     envSchema: options?.envSchema,
   };
 
-  const app = new Hono();
+
+  const app = new Hono<{ Bindings: CloudflareEnvBindings }>();
 
   app.get("/manifest.json", (ctx) => {
     return ctx.json(manifest);
@@ -92,6 +98,15 @@ export function createPlugin<TConfig = unknown, TEnv = unknown, TSupportedEvents
       env = ctx.env as TEnv;
     }
 
+    const workerUrl = new URL(inputs.ref).origin;
+    let workerName;
+
+    if (workerUrl.includes("localhost")) {
+      workerName = "localhost";
+    } else {
+      workerName = `${workerUrl.split("//")[1].split(".")[0]}`;
+    }
+
     const context: Context<TConfig, TEnv, TSupportedEvents> = {
       eventName: inputs.eventName as TSupportedEvents,
       payload: inputs.eventPayload,
@@ -99,6 +114,7 @@ export function createPlugin<TConfig = unknown, TEnv = unknown, TSupportedEvents
       config: config,
       env: env,
       logger: new Logs(pluginOptions.logLevel),
+      pluginDeploymentDetails: `${workerName}`,
     };
 
     try {
@@ -106,18 +122,9 @@ export function createPlugin<TConfig = unknown, TEnv = unknown, TSupportedEvents
       return ctx.json({ stateId: inputs.stateId, output: result });
     } catch (error) {
       console.error(error);
-
-      let loggerError: LogReturn | null;
-      if (error instanceof Error) {
-        loggerError = context.logger.error(`Error: ${error}`, { error: error });
-      } else if (error instanceof LogReturn) {
-        loggerError = error;
-      } else {
-        loggerError = context.logger.error(`Error: ${error}`);
-      }
-
+      const loggerError = error as LogReturn | Error | null;
       if (pluginOptions.postCommentOnError && loggerError) {
-        await postComment(context, loggerError);
+        await postComment(context, loggerError, honoEnvironment);
       }
 
       throw new HTTPException(500, { message: "Unexpected error" });

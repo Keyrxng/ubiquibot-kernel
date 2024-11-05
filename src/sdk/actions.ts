@@ -80,6 +80,8 @@ export async function createActionsPlugin<TConfig = unknown, TEnv = unknown, TSu
     env = process.env as TEnv;
   }
 
+
+
   const context: Context<TConfig, TEnv, TSupportedEvents> = {
     eventName: inputs.eventName as TSupportedEvents,
     payload: JSON.parse(inputs.eventPayload),
@@ -87,6 +89,7 @@ export async function createActionsPlugin<TConfig = unknown, TEnv = unknown, TSu
     config: config,
     env: env,
     logger: new Logs(pluginOptions.logLevel),
+    pluginDeploymentDetails: getGithubWorkflowRunUrl()
   };
 
   try {
@@ -120,7 +123,7 @@ async function postErrorComment(context: Context, error: LogReturn) {
       owner: context.payload.repository.owner.login,
       repo: context.payload.repository.name,
       issue_number: context.payload.issue.number,
-      body: `${error.logMessage.diff}\n<!--\n${getGithubWorkflowRunUrl()}\n${sanitizeMetadata(error.metadata)}\n-->`,
+      body: `${error.logMessage.diff}\n<!--\n${context.pluginDeploymentDetails}\n${sanitizeMetadata(error.metadata)}\n-->`,
     });
   } else {
     context.logger.info("Cannot post error comment because issue is not found in the payload");

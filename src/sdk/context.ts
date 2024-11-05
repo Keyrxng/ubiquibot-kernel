@@ -11,4 +11,5 @@ export interface Context<TConfig = unknown, TEnv = unknown, TSupportedEvents ext
   config: TConfig;
   env: TEnv;
   logger: Logs;
+  pluginDeploymentDetails: string;
 }
